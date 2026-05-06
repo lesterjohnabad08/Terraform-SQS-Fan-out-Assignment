@@ -43,9 +43,36 @@ resource "aws_sns_topic" "New_S3_Obj_Uploaded_Event_Msg" {
 resource "aws_sqs_queue" "sqs_fanout_new_s3_obj_event" {
   name                      = "sqs_fanout_new_s3_obj_event"
   delay_seconds             = 0
-  max_message_size          = 2048
-  message_retention_seconds = 86400
+  max_message_size          = 1024000
+  message_retention_seconds = 345600
   receive_wait_time_seconds = 0  
+}
+
+data "aws_iam_policy_document" "sqs_allow_sns" {
+  statement {
+    sid     = "AllowSNSPublish"
+    effect  = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["sns.amazonaws.com"]
+    }
+
+    actions   = ["sqs:SendMessage"]
+    resources = [aws_sqs_queue.sqs_fanout_new_s3_obj_event.arn]
+
+    condition {
+      test     = "ArnLike"
+      variable = "aws:SourceArn"
+      values   = [aws_sns_topic.New_S3_Obj_Uploaded_Event_Msg.arn]
+    }
+
+  }
+}
+
+resource "aws_sqs_queue_policy" "test" {
+  queue_url = aws_sqs_queue.sqs_fanout_new_s3_obj_event.id
+  policy    = data.aws_iam_policy_document.sqs_allow_sns.json
 }
 
 resource "aws_sns_topic_subscription" "New_S3_Obj_Uploaded_Event_Msg_Subscription" {
