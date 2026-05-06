@@ -56,10 +56,12 @@ resource "aws_sns_topic_subscription" "New_S3_Obj_Uploaded_Event_Msg_Subscriptio
 #Create S3 Buckets
 resource "aws_s3_bucket" "sqs_fan_out_bucket_ljabad" {
   bucket = "sqs-fan-out-bucket-ljabad"
+  force_destroy = true
 }
 
 resource "aws_s3_bucket" "sqs_fan_out_bucket_ljabad_resized" {
   bucket = "sqs-fan-out-bucket-ljabad-resized"
+  force_destroy = true
 }
 
 #Attach Event Notification: S3 bucket source to SNS Topic
@@ -167,12 +169,12 @@ resource "aws_iam_role_policy_attachment" "AWSLambdaBasicExecutionRole" {
 #All code before this are working - just input the lambda
 
 #Editing this
-/*
+
 resource "aws_lambda_function" "SQS_Fanout_Assignment" {
   filename      = "${path.module}/lambda_function.zip"
   function_name = "SQS-Fanout-Assignment"
   role          = aws_iam_role.lambda_s3_sqs_allow_role.arn 
-  handler       = "lambda_function.handler"
+  handler       = "lambda_function.lambda_handler"
   runtime       = "python3.14"
 
   timeout      = 60
@@ -182,7 +184,6 @@ resource "aws_lambda_function" "SQS_Fanout_Assignment" {
 resource "aws_lambda_event_source_mapping" "example" {
   event_source_arn = aws_sqs_queue.sqs_fanout_new_s3_obj_event.arn
   function_name    = aws_lambda_function.SQS_Fanout_Assignment.arn
-  batch_size       = 1
+  batch_size       = 10
 }
-*/
 
