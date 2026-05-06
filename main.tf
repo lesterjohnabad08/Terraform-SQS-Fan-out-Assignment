@@ -45,7 +45,7 @@ resource "aws_sns_topic" "New_S3_Obj_Uploaded_Event_Msg" {
   policy = data.aws_iam_policy_document.topic.json
 }
 
-#Enable this if email notification is required
+#Uncomment this if email notification is required
 /*
 #Email Subscription to SNS Topic
 resource "aws_sns_topic_subscription" "New_S3_Obj_Uploaded_Event_Msg_Subscription" {
