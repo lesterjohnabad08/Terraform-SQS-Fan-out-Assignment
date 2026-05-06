@@ -13,6 +13,11 @@ provider "aws" {
   region  = "us-east-1"
 }
 
+###################
+#       Topic     #
+###################
+
+#Topic Policy
 data "aws_iam_policy_document" "topic" {
   statement {
     effect = "Allow"
@@ -36,8 +41,40 @@ data "aws_iam_policy_document" "topic" {
 #Create SNS Topic
 resource "aws_sns_topic" "New_S3_Obj_Uploaded_Event_Msg" {
   name = "New_S3_Obj_Uploaded_Event_Msg"
+  #attach topic policy
   policy = data.aws_iam_policy_document.topic.json
 }
+###################################################
+
+#Email Subscription to SNS Topic
+resource "aws_sns_topic_subscription" "New_S3_Obj_Uploaded_Event_Msg_Subscription" {
+  topic_arn            = aws_sns_topic.New_S3_Obj_Uploaded_Event_Msg.arn
+  protocol             = "email"
+  endpoint             = var.email_address
+}
+
+#Create S3 Buckets
+resource "aws_s3_bucket" "sqs_fan_out_bucket_ljabad" {
+  bucket = "sqs-fan-out-bucket-ljabad"
+}
+
+resource "aws_s3_bucket" "sqs_fan_out_bucket_ljabad_resized" {
+  bucket = "sqs-fan-out-bucket-ljabad-resized"
+}
+
+#Attach Event Notification: S3 bucket source to SNS Topic
+resource "aws_s3_bucket_notification" "sqs_fan_out_new_s3_obj_msg_ljabad" {
+  bucket = aws_s3_bucket.sqs_fan_out_bucket_ljabad.id
+
+  topic {
+    topic_arn     = aws_sns_topic.New_S3_Obj_Uploaded_Event_Msg.arn
+    events        = ["s3:ObjectCreated:*"]
+    
+  }
+}
+###################
+#    SQS_Queue    #
+###################
 
 #create SQS_Queue
 resource "aws_sqs_queue" "sqs_fanout_new_s3_obj_event" {
@@ -45,9 +82,12 @@ resource "aws_sqs_queue" "sqs_fanout_new_s3_obj_event" {
   delay_seconds             = 0
   max_message_size          = 1024000
   message_retention_seconds = 345600
-  receive_wait_time_seconds = 0  
+  receive_wait_time_seconds = 0
+  visibility_timeout_seconds = 120
 }
 
+
+#SQS_Policy
 data "aws_iam_policy_document" "sqs_allow_sns" {
   statement {
     sid     = "AllowSNSPublish"
@@ -70,16 +110,12 @@ data "aws_iam_policy_document" "sqs_allow_sns" {
   }
 }
 
-resource "aws_sqs_queue_policy" "test" {
+#Attach SQS_Policy to SQS_Queue
+resource "aws_sqs_queue_policy" "sqs_allow_sns_policy" {
   queue_url = aws_sqs_queue.sqs_fanout_new_s3_obj_event.id
   policy    = data.aws_iam_policy_document.sqs_allow_sns.json
 }
 
-resource "aws_sns_topic_subscription" "New_S3_Obj_Uploaded_Event_Msg_Subscription" {
-  topic_arn            = aws_sns_topic.New_S3_Obj_Uploaded_Event_Msg.arn
-  protocol             = "email"
-  endpoint             = var.email_address
-}
 
 resource "aws_sns_topic_subscription" "SQS_Queue_Event_Msg_Subscription" {
   topic_arn            = aws_sns_topic.New_S3_Obj_Uploaded_Event_Msg.arn
@@ -87,23 +123,9 @@ resource "aws_sns_topic_subscription" "SQS_Queue_Event_Msg_Subscription" {
   endpoint             = aws_sqs_queue.sqs_fanout_new_s3_obj_event.arn
 }
 
-resource "aws_s3_bucket" "sqs_fan_out_bucket_ljabad" {
-  bucket = "sqs-fan-out-bucket-ljabad"
-}
 
-resource "aws_s3_bucket" "sqs_fan_out_bucket_ljabad_resized" {
-  bucket = "sqs-fan-out-bucket-ljabad-resized"
-}
 
-resource "aws_s3_bucket_notification" "sqs_fan_out_new_s3_obj_msg_ljabad" {
-  bucket = aws_s3_bucket.sqs_fan_out_bucket_ljabad.id
 
-  topic {
-    topic_arn     = aws_sns_topic.New_S3_Obj_Uploaded_Event_Msg.arn
-    events        = ["s3:ObjectCreated:*"]
-    
-  }
-}
 
 #create Lambda_SQS_Role ********
 resource "aws_iam_role" "lambda_s3_sqs_allow_role" {
@@ -137,13 +159,30 @@ resource "aws_iam_role_policy_attachment" "sqs_full_access" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
 }
 
+resource "aws_iam_role_policy_attachment" "AWSLambdaBasicExecutionRole" {
+  role      = aws_iam_role.lambda_s3_sqs_allow_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+#All code before this are working - just input the lambda
+
 #Editing this
+/*
+resource "aws_lambda_function" "SQS_Fanout_Assignment" {
+  filename      = "${path.module}/lambda_function.zip"
+  function_name = "SQS-Fanout-Assignment"
+  role          = aws_iam_role.lambda_s3_sqs_allow_role.arn 
+  handler       = "lambda_function.handler"
+  runtime       = "python3.14"
 
-#resource "aws_lambda_function" "example" {
- # filename      = "${path.module}/lambda.zip"
- # function_name = "example_lambda_function"
- # role          = aws_iam_role.example.arn 
- # handler       = "lambda_function.handler"
- # runtime       = "python3.12"
+  timeout      = 60
+  memory_size = 1024
+}
 
-#}
+resource "aws_lambda_event_source_mapping" "example" {
+  event_source_arn = aws_sqs_queue.sqs_fanout_new_s3_obj_event.arn
+  function_name    = aws_lambda_function.SQS_Fanout_Assignment.arn
+  batch_size       = 1
+}
+*/
+

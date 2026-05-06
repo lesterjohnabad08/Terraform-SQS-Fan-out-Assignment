@@ -9,4 +9,6 @@ https://registry.terraform.io/providers/-/aws/6.27.0/docs/resources/sqs_queue
 https://registry.terraform.io/providers/-/aws/6.27.0/docs/resources/sqs_queue_policy
 https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket
 https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_notification
+https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_function.html
+https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_event_source_mapping
 
