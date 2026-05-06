@@ -44,21 +44,37 @@ resource "aws_sns_topic" "New_S3_Obj_Uploaded_Event_Msg" {
   #attach topic policy
   policy = data.aws_iam_policy_document.topic.json
 }
-###################################################
 
+#Enable this if email notification is required
+/*
 #Email Subscription to SNS Topic
 resource "aws_sns_topic_subscription" "New_S3_Obj_Uploaded_Event_Msg_Subscription" {
   topic_arn            = aws_sns_topic.New_S3_Obj_Uploaded_Event_Msg.arn
   protocol             = "email"
   endpoint             = var.email_address
 }
+*/
+# Subscribe SQS_Queue to SNS Topic
+resource "aws_sns_topic_subscription" "SQS_Queue_Event_Msg_Subscription" {
+  topic_arn            = aws_sns_topic.New_S3_Obj_Uploaded_Event_Msg.arn
+  protocol             = "sqs"
+  endpoint             = aws_sqs_queue.sqs_fanout_new_s3_obj_event.arn
+}
 
-#Create S3 Buckets
+###################################################
+###################################################
+
+###################
+#    S3 Buckets   #
+###################
+
+#Create Source S3 Bucket
 resource "aws_s3_bucket" "sqs_fan_out_bucket_ljabad" {
   bucket = "sqs-fan-out-bucket-ljabad"
   force_destroy = true
 }
 
+#Create Resized Destrination S3 Bucket
 resource "aws_s3_bucket" "sqs_fan_out_bucket_ljabad_resized" {
   bucket = "sqs-fan-out-bucket-ljabad-resized"
   force_destroy = true
@@ -74,6 +90,9 @@ resource "aws_s3_bucket_notification" "sqs_fan_out_new_s3_obj_msg_ljabad" {
     
   }
 }
+###################################################
+###################################################
+
 ###################
 #    SQS_Queue    #
 ###################
@@ -87,7 +106,6 @@ resource "aws_sqs_queue" "sqs_fanout_new_s3_obj_event" {
   receive_wait_time_seconds = 0
   visibility_timeout_seconds = 120
 }
-
 
 #SQS_Policy
 data "aws_iam_policy_document" "sqs_allow_sns" {
@@ -118,17 +136,13 @@ resource "aws_sqs_queue_policy" "sqs_allow_sns_policy" {
   policy    = data.aws_iam_policy_document.sqs_allow_sns.json
 }
 
-
-resource "aws_sns_topic_subscription" "SQS_Queue_Event_Msg_Subscription" {
-  topic_arn            = aws_sns_topic.New_S3_Obj_Uploaded_Event_Msg.arn
-  protocol             = "sqs"
-  endpoint             = aws_sqs_queue.sqs_fanout_new_s3_obj_event.arn
-}
+###################################################
+###################################################
 
 
-
-
-
+###################
+#      Lambda     #
+###################
 #create Lambda_SQS_Role ********
 resource "aws_iam_role" "lambda_s3_sqs_allow_role" {
   name = "lambda_s3_sqs_allow_role"
@@ -151,25 +165,25 @@ resource "aws_iam_role" "lambda_s3_sqs_allow_role" {
   }
 }
 
+# Attach AmazonS3FullAccess to the Role created
 resource "aws_iam_role_policy_attachment" "s3_full_access" {
   role      = aws_iam_role.lambda_s3_sqs_allow_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
 }
 
+# Attach AmazonSQSFullAccess to the Role created
 resource "aws_iam_role_policy_attachment" "sqs_full_access" {
   role      = aws_iam_role.lambda_s3_sqs_allow_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
 }
 
+# Attach AWSLambdaBasicExecutionRole to the Role created
 resource "aws_iam_role_policy_attachment" "AWSLambdaBasicExecutionRole" {
   role      = aws_iam_role.lambda_s3_sqs_allow_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-#All code before this are working - just input the lambda
-
-#Editing this
-
+#Create Lambda_Function and attach the deployment package (lambda_function.zip) located on the root folder of this project
 resource "aws_lambda_function" "SQS_Fanout_Assignment" {
   filename      = "${path.module}/lambda_function.zip"
   function_name = "SQS-Fanout-Assignment"
@@ -181,9 +195,12 @@ resource "aws_lambda_function" "SQS_Fanout_Assignment" {
   memory_size = 1024
 }
 
-resource "aws_lambda_event_source_mapping" "example" {
+# Add the created SQS_Que as Lambda Trigger
+resource "aws_lambda_event_source_mapping" "SQS_Trigger" {
   event_source_arn = aws_sqs_queue.sqs_fanout_new_s3_obj_event.arn
   function_name    = aws_lambda_function.SQS_Fanout_Assignment.arn
   batch_size       = 10
 }
 
+###################################################
+###################################################
