@@ -13,7 +13,7 @@ to implement the following design using either CDK or Terraform.
 5. Each SQS queue has a Lambda trigger, which processes messages in the queue. One SQS queue and one Lambda function are required. This GitHub
 repository https://github.com/rclc/CreateThumbnail-Lambda-Python-Pillow has an example of generating thumbnail.
 
-## References used:
+## References used to finish this project:
 https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sns_topic
 https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sns_topic_policy
 https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sns_topic_subscription
