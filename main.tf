@@ -70,13 +70,13 @@ resource "aws_sns_topic_subscription" "SQS_Queue_Event_Msg_Subscription" {
 
 #Create Source S3 Bucket
 resource "aws_s3_bucket" "sqs_fan_out_bucket_ljabad" {
-  bucket = "sqs-fan-out-bucket-ljabad"
+  bucket = var.source_s3bucket_name
   force_destroy = true
 }
 
 #Create Resized Destrination S3 Bucket
 resource "aws_s3_bucket" "sqs_fan_out_bucket_ljabad_resized" {
-  bucket = "sqs-fan-out-bucket-ljabad-resized"
+  bucket = "${var.source_s3bucket_name}-resized"
   force_destroy = true
 }
 
