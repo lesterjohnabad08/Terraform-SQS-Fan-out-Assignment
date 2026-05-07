@@ -13,6 +13,11 @@ to implement the following design using either CDK or Terraform.
 5. Each SQS queue has a Lambda trigger, which processes messages in the queue. One SQS queue and one Lambda function are required. This GitHub
 repository https://github.com/rclc/CreateThumbnail-Lambda-Python-Pillow has an example of generating thumbnail.
 
+## Additional configuration added
+- I configured a Terraform variable to prompt the user for a globally unique source bucket name to avoid conflict.
+- lambda_function.zip contains the lambda_function.py together with the dependencies, which will automatically be uploaded to the lambda function when terraform apply is executed.
+- I enabled force_destroy on the S3 bucket so that it is automatically deleted when terraform destroy is executed.
+
 ## References used to finish this project:
 https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sns_topic
 https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sns_topic_policy
